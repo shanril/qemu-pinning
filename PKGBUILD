@@ -1,9 +1,10 @@
 # Maintainer: Tobias Powalowski <tpowa@archlinux.org>
 # Contributor: Sébastien "Seblu" Luttringer <seblu@seblu.net>
 
-pkgbase=qemu
-pkgname=(qemu qemu-headless qemu-arch-extra qemu-headless-arch-extra
-         qemu-block-{iscsi,rbd,gluster} qemu-guest-agent)
+pkgbase=qemu-pinning
+pkgname=(qemu-pinning qemu-pinning-headless qemu-pinning-arch-extra qemu-pinning-headless-arch-extra
+         qemu-pinning-block-{iscsi,rbd,gluster} qemu-pinning-guest-agent)
+_pkgname=qemu
 pkgdesc="A generic and open source machine emulator and virtualizer"
 pkgver=4.2.0
 pkgrel=1
@@ -12,15 +13,18 @@ license=(GPL2 LGPL2.1)
 url="https://wiki.qemu.org/"
 _headlessdeps=(seabios gnutls libpng libaio numactl jemalloc xfsprogs libnfs
                lzo snappy curl vde2 libcap-ng spice libcacard usbredir libslirp libssh)
+provides=(qemu)
 depends=(virglrenderer sdl2 vte3 libpulse "${_headlessdeps[@]}")
 makedepends=(spice-protocol python ceph libiscsi glusterfs python-sphinx)
 source=(https://download.qemu.org/qemu-$pkgver.tar.xz{,.sig}
         qemu-ga.service
-        65-kvm.rules)
+        65-kvm.rules
+		https://github.com/saveriomiroddi/qemu-pinning/commit/4e4fe6402e9e4943cc247a4ccfea21fa5f608b30.diff)
 sha512sums=('2a79973c2b07c53e8c57a808ea8add7b6b2cbca96488ed5d4b669ead8c9318907dec2b6109f180fc8ca8f04c0f73a56e82b3a527b5626b799d7e849f2474ec56'
             'SKIP'
             '269c0f0bacbd06a3d817fde02dce26c99d9f55c9e3b74bb710bd7e5cdde7a66b904d2eb794c8a605bf9305e4e3dee261a6e7d4ec9d9134144754914039f176e4'
-            'bdf05f99407491e27a03aaf845b7cc8acfa2e0e59968236f10ffc905e5e3d5e8569df496fd71c887da2b5b8d1902494520c7da2d3a8258f7fd93a881dd610c99')
+            'bdf05f99407491e27a03aaf845b7cc8acfa2e0e59968236f10ffc905e5e3d5e8569df496fd71c887da2b5b8d1902494520c7da2d3a8258f7fd93a881dd610c99'
+            'SKIP')
 validpgpkeys=('CEACC9E15534EBABB82D3FA03353C9CEF108B584')
 
 case $CARCH in
@@ -32,7 +36,9 @@ prepare() {
   mkdir build-{full,headless}
   mkdir -p extra-arch-{full,headless}/usr/{bin,share/qemu}
 
-  cd ${pkgname}-${pkgver}
+  cd ${_pkgname}-${pkgver}
+  
+  patch -p1 < ../4e4fe6402e9e4943cc247a4ccfea21fa5f608b30.diff
 }
 
 build() {
@@ -56,9 +62,9 @@ _build() (
   export ARFLAGS=rv
 
   # http://permalink.gmane.org/gmane.comp.emulators.qemu/238740
-  export CFLAGS+=" -fPIC"
+  export CFLAGS+=" -fPIC -march=native -Ofast"
 
-  ../${pkgname}-${pkgver}/configure \
+  ../${_pkgname}-${pkgver}/configure \
     --prefix=/usr \
     --sysconfdir=/etc \
     --localstatedir=/var \
@@ -73,7 +79,7 @@ _build() (
   make
 )
 
-package_qemu() {
+package_qemu-pinning() {
   optdepends=('qemu-arch-extra: extra architectures support')
   provides=(qemu-headless)
   conflicts=(qemu-headless)
@@ -82,7 +88,7 @@ package_qemu() {
   _package full
 }
 
-package_qemu-headless() {
+package_qemu-pinning-headless() {
   pkgdesc="QEMU without GUI"
   depends=("${_headlessdeps[@]}")
   optdepends=('qemu-headless-arch-extra: extra architectures support')
@@ -165,7 +171,7 @@ _package() {
   done
 }
 
-package_qemu-arch-extra() {
+package_qemu-pinning-arch-extra() {
   pkgdesc="QEMU for foreign architectures"
   depends=(qemu)
   provides=(qemu-headless-arch-extra)
@@ -175,7 +181,7 @@ package_qemu-arch-extra() {
   mv extra-arch-full/usr "$pkgdir"
 }
 
-package_qemu-headless-arch-extra() {
+package_qemu-pinning-headless-arch-extra() {
   pkgdesc="QEMU without GUI, for foreign architectures"
   depends=(qemu-headless)
   options=(!strip)
@@ -183,28 +189,28 @@ package_qemu-headless-arch-extra() {
   mv extra-arch-headless/usr "$pkgdir"
 }
 
-package_qemu-block-iscsi() {
+package_qemu-pinning-block-iscsi() {
   pkgdesc="QEMU iSCSI block module"
   depends=(glib2 libiscsi jemalloc)
 
   install -D build-full/block-iscsi.so "$pkgdir/usr/lib/qemu/block-iscsi.so"
 }
 
-package_qemu-block-rbd() {
+package_qemu-pinning-block-rbd() {
   pkgdesc="QEMU RBD block module"
   depends=(glib2 ceph)
 
   install -D build-full/block-rbd.so "$pkgdir/usr/lib/qemu/block-rbd.so"
 }
 
-package_qemu-block-gluster() {
+package_qemu-pinning-block-gluster() {
   pkgdesc="QEMU GlusterFS block module"
   depends=(glib2 glusterfs)
 
   install -D build-full/block-gluster.so "$pkgdir/usr/lib/qemu/block-gluster.so"
 }
 
-package_qemu-guest-agent() {
+package_qemu-pinning-guest-agent() {
   pkgdesc="QEMU Guest Agent"
   depends=(gcc-libs glib2)
 
